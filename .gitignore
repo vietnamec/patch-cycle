@@ -1,0 +1,28 @@
+# Ansible vault
+group_vars/vault.yml
+
+# Python / Ansible cache
+__pycache__/
+*.pyc
+*.pyo
+*.retry
+*.log
+ansible.log
+
+# SSH keys
+*.pem
+*.key
+*.pub
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Local overrides
+inventory_local.yml

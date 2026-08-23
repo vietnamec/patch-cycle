@@ -1,0 +1,7 @@
+---
+vault_ansible_user: "patchuser"
+vault_ssh_key_path: "/home/runner/.ssh/patch_key"
+vault_vcenter_host: "vcenter.example.com"
+vault_vcenter_user: "admin@vsphere.local"
+vault_vcenter_password: "change_me"
+vault_monitoring_api_key: "change_me"

@@ -1,0 +1,15 @@
+---
+# Ansible runtime
+ansible_user: "{{ vault_ansible_user }}"
+ansible_ssh_private_key_file: "{{ vault_ssh_key_path }}"
+ansible_python_interpreter: /usr/bin/python3
+
+# Patching behaviour
+patch_batch_size: 5
+max_fail_percentage: 10
+
+# vCenter (host is not a secret, credentials are in vault)
+vcenter_host: "{{ vault_vcenter_host }}"
+
+# Monitoring (URL is public, key is in vault)
+monitoring_api_url: "https://monitoring.example.com/api"

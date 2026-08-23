@@ -1,0 +1,26 @@
+---
+- name: Manage monitoring downtime
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Open downtime for all patch targets
+      uri:
+        url: "{{ monitoring_api_url }}/downtime"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_monitoring_api_key }}"
+        body_format: json
+        body:
+          hosts: "{{ groups['patch_targets'] }}"
+          comment: "Patching cycle {{ patch_run_id }}"
+          duration: 3600
+      when: monitoring_state == "start"
+
+    - name: Close downtime
+      uri:
+        url: "{{ monitoring_api_url }}/downtime/{{ patch_run_id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ vault_monitoring_api_key }}"
+      when: monitoring_state == "stop"

@@ -1,0 +1,50 @@
+name: Patch cycle
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: true
+        description: "If true, skip actual patching"
+
+jobs:
+  patch:
+    runs-on: [self-hosted, on-prem]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install ansible-core
+          ansible-galaxy collection install community.vmware
+
+      - name: Snapshot VMs
+        run: |
+          ansible-playbook playbooks/snapshot_vms.yml -i inventory.yml \
+            -e snapshot_action=create \
+            -e patch_run_id=${{ github.run_id }}
+
+      - name: Open monitoring downtime
+        run: |
+          ansible-playbook playbooks/downtime_mon.yml -i inventory.yml \
+            -e monitoring_state=start \
+            -e patch_run_id=${{ github.run_id }}
+
+      - name: Run patching (dry-run skips this)
+        if: inputs.dry_run == false
+        run: |
+          ansible-playbook playbooks/patch.yml -i inventory.yml \
+            -e patch_run_id=${{ github.run_id }}
+
+      - name: Dry-run placeholder
+        if: inputs.dry_run == true
+        run: echo "Dry-run – skipping actual patching"
+
+      - name: Close monitoring downtime
+        if: always()
+        run: |
+          ansible-playbook playbooks/downtime_mon.yml -i inventory.yml \
+            -e monitoring_state=stop \
+            -e patch_run_id=${{ github.run_id }}
