@@ -5,7 +5,7 @@
   gather_facts: false
   tasks:
     - name: Open downtime for all patch targets
-      uri:
+      ansible.builtin.uri:
         url: "{{ monitoring_api_url }}/downtime"
         method: POST
         headers:
@@ -18,7 +18,7 @@
       when: monitoring_state == "start"
 
     - name: Close downtime
-      uri:
+      ansible.builtin.uri:
         url: "{{ monitoring_api_url }}/downtime/{{ patch_run_id }}"
         method: DELETE
         headers:

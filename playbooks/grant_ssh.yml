@@ -4,8 +4,8 @@
   become: true
   tasks:
     - name: Add the patch user's public key
-      authorized_key:
+      ansible.posix.authorized_key:
         user: "{{ ansible_user }}"
         state: present
-        key: "{{ lookup('file', ssh_public_key_path) }}"
+        key: "{{ lookup('ansible.builtin.file', ssh_public_key_path) }}"
       when: ssh_public_key_path is defined

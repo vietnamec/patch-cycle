@@ -10,6 +10,8 @@
         username: "{{ vault_vcenter_user }}"
         password: "{{ vault_vcenter_password }}"
         validate_certs: false
+        datacenter: "{{ vcenter_datacenter }}"
+        folder: "{{ vm_folder }}"
         name: "{{ inventory_hostname }}"
         snapshot_name: "pre-patch-{{ patch_run_id }}"
         state: present
@@ -21,6 +23,8 @@
         username: "{{ vault_vcenter_user }}"
         password: "{{ vault_vcenter_password }}"
         validate_certs: false
+        datacenter: "{{ vcenter_datacenter }}"
+        folder: "{{ vm_folder }}"
         name: "{{ inventory_hostname }}"
         snapshot_name: "pre-patch-{{ patch_run_id }}"
         state: revert

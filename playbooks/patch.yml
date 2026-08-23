@@ -3,25 +3,27 @@
 - name: Patch generic servers
   hosts: patch_targets
   become: true
-  serial: "{{ patch_batch_size }}"
-  max_fail_percentage: "{{ max_fail_percentage }}"
+  serial: 5
+  max_fail_percentage: 10
 
   tasks:
-    - block:
+    - name: Patch and reboot block
+      block:
         - name: Update installed packages
-          dnf:
+          ansible.builtin.dnf:
             name: "*"
             state: latest
             update_only: true
 
         - name: Check if reboot is needed
-          command: needs-restarting -r
+          ansible.builtin.command:
+            cmd: needs-restarting -r
           register: reboot_check
           changed_when: false
           failed_when: false
 
         - name: Reboot if necessary
-          reboot:
+          ansible.builtin.reboot:
             reboot_timeout: 600
           when: reboot_check.rc == 1
 
@@ -32,6 +34,8 @@
             username: "{{ vault_vcenter_user }}"
             password: "{{ vault_vcenter_password }}"
             validate_certs: false
+            datacenter: "{{ vcenter_datacenter }}"
+            folder: "{{ vm_folder }}"
             name: "{{ inventory_hostname }}"
             snapshot_name: "pre-patch-{{ patch_run_id }}"
             state: revert
@@ -39,7 +43,7 @@
           when: inventory_hostname in groups['rhel_vms']
 
         - name: Re-raise failure to count toward threshold
-          fail:
+          ansible.builtin.fail:
             msg: "{{ inventory_hostname }} failed – snapshot reverted"
 
 # Play 2: Kubernetes control plane (serial 1, zero tolerance)
@@ -51,40 +55,47 @@
 
   tasks:
     - name: Cordon node
-      command: kubectl cordon {{ inventory_hostname }}
+      ansible.builtin.command:
+        cmd: kubectl cordon {{ inventory_hostname }}
       changed_when: false
 
     - name: Drain node
-      command: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data
+      ansible.builtin.command:
+        cmd: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data
       register: drain_output
       until: drain_output.rc == 0
       retries: 3
       delay: 10
+      changed_when: false
 
-    - block:
+    - name: Patch and reboot control plane block
+      block:
         - name: Update packages
-          dnf:
+          ansible.builtin.dnf:
             name: "*"
             state: latest
             update_only: true
 
         - name: Check reboot
-          command: needs-restarting -r
+          ansible.builtin.command:
+            cmd: needs-restarting -r
           register: reboot_check
           changed_when: false
           failed_when: false
 
         - name: Reboot if needed
-          reboot:
+          ansible.builtin.reboot:
             reboot_timeout: 600
           when: reboot_check.rc == 1
 
       rescue:
-        - fail:
+        - name: Fail control plane node
+          ansible.builtin.fail:
             msg: "Control plane node {{ inventory_hostname }} failed"
 
     - name: Uncordon node
-      command: kubectl uncordon {{ inventory_hostname }}
+      ansible.builtin.command:
+        cmd: kubectl uncordon {{ inventory_hostname }}
       changed_when: false
       when: not (ansible_failed_result is defined and ansible_failed_result.failed)
 
@@ -92,44 +103,51 @@
 - name: Patch k8s workers
   hosts: k8s_workers
   become: true
-  serial: "{{ patch_batch_size }}"
+  serial: 5
   max_fail_percentage: 10
 
   tasks:
     - name: Cordon node
-      command: kubectl cordon {{ inventory_hostname }}
+      ansible.builtin.command:
+        cmd: kubectl cordon {{ inventory_hostname }}
       changed_when: false
 
     - name: Drain node
-      command: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data
+      ansible.builtin.command:
+        cmd: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data
       register: drain_output
       until: drain_output.rc == 0
       retries: 3
       delay: 10
+      changed_when: false
 
-    - block:
+    - name: Patch and reboot worker block
+      block:
         - name: Update packages
-          dnf:
+          ansible.builtin.dnf:
             name: "*"
             state: latest
             update_only: true
 
         - name: Check reboot
-          command: needs-restarting -r
+          ansible.builtin.command:
+            cmd: needs-restarting -r
           register: reboot_check
           changed_when: false
           failed_when: false
 
         - name: Reboot if needed
-          reboot:
+          ansible.builtin.reboot:
             reboot_timeout: 600
           when: reboot_check.rc == 1
 
       rescue:
-        - fail:
+        - name: Fail worker node
+          ansible.builtin.fail:
             msg: "Worker node {{ inventory_hostname }} failed"
 
     - name: Uncordon node
-      command: kubectl uncordon {{ inventory_hostname }}
+      ansible.builtin.command:
+        cmd: kubectl uncordon {{ inventory_hostname }}
       changed_when: false
       when: not (ansible_failed_result is defined and ansible_failed_result.failed)
