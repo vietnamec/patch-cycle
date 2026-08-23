@@ -19,32 +19,41 @@ jobs:
       - name: Install dependencies
         run: |
           pip install ansible-core
-          ansible-galaxy collection install community.vmware
+          ansible-galaxy collection install community.vmware ansible.posix
+
+      - name: Dry-run placeholder
+        if: inputs.dry_run == true
+        run: echo "Dry-run mode enabled – skipping snapshot, downtime, and patching."
 
       - name: Snapshot VMs
+        if: inputs.dry_run == false
         run: |
           ansible-playbook playbooks/snapshot_vms.yml -i inventory.yml \
             -e snapshot_action=create \
             -e patch_run_id=${{ github.run_id }}
 
       - name: Open monitoring downtime
+        if: inputs.dry_run == false
         run: |
           ansible-playbook playbooks/downtime_mon.yml -i inventory.yml \
             -e monitoring_state=start \
             -e patch_run_id=${{ github.run_id }}
 
-      - name: Run patching (dry-run skips this)
+      - name: Run patching
         if: inputs.dry_run == false
         run: |
           ansible-playbook playbooks/patch.yml -i inventory.yml \
             -e patch_run_id=${{ github.run_id }}
 
-      - name: Dry-run placeholder
-        if: inputs.dry_run == true
-        run: echo "Dry-run – skipping actual patching"
+      - name: Delete pre-patch VM snapshots
+        if: inputs.dry_run == false && success()
+        run: |
+          ansible-playbook playbooks/snapshot_vms.yml -i inventory.yml \
+            -e snapshot_action=delete \
+            -e patch_run_id=${{ github.run_id }}
 
       - name: Close monitoring downtime
-        if: always()
+        if: inputs.dry_run == false && always()
         run: |
           ansible-playbook playbooks/downtime_mon.yml -i inventory.yml \
             -e monitoring_state=stop \
